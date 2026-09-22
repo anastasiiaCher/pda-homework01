@@ -1,6 +1,6 @@
 name: CS102 Workflow
 
-on: [push, pull_request]
+on: [pull_request]
 
 jobs:
   build:
@@ -18,4 +18,4 @@ jobs:
     - name: Run unittests
       run: |
         cd homework01
-        python -m unittest discover ${{ github.head_ref }}
+        python -m unittest discover homework01/
