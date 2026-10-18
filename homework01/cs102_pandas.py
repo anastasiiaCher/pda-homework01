@@ -30,11 +30,9 @@ def find_homonymous_students(df: pd.DataFrame) -> Tuple[bool, int, pd.Series, st
      - серию с числом однофамильцев по курсам
      - группу с максимальным числом однофамильцев
     """
-    # однофамильцы по всему факультету
     homonyms = df[df.duplicated("surname", keep=False)]
     has_homonyms = not homonyms.empty
     total_homonyms = len(homonyms)
-    # однофамильцы в пределах одного курса
     homonyms_in_course = df[df.duplicated(["surname", "курс"], keep=False)]
     homonyms_per_course = homonyms_in_course["курс"].value_counts().sort_index()
     max_homonym_group = homonyms["группа"].value_counts().idxmax()
@@ -87,7 +85,6 @@ def course_statistics(data: pd.DataFrame) -> Tuple[pd.Series, pd.Series]:
     Вычисляет среднее и медианное число студентов на каждом курсе.
     Возвращает две серии с результатами: сначала средние, потом медиана.
     """
-    # число студентов на каждом курсе каждого факультета
     per_faculty = data.groupby(["курс", "факультет"]).size().groupby("курс")
     mean_students = per_faculty.mean().round(1)
     median_students = per_faculty.median()
@@ -153,7 +150,6 @@ def find_consecutive_students(data: pd.DataFrame) -> pd.DataFrame:
     Выводит их ФИО, факультет, курс и номер группы.
     """
     students = data.sort_values("ису").reset_index(drop=True)
-    # номер серии: увеличивается, когда разница с предыдущим номером не равна 1
     run_id = students["ису"].diff().ne(1).cumsum()
     run_size = students.groupby(run_id)["ису"].transform("size")
     first_run = run_id[run_size >= 5].iloc[0]
