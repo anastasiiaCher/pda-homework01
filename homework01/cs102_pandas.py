@@ -9,7 +9,10 @@ def filter_fsuir_students(data: pd.DataFrame) -> Tuple[int, int, pd.DataFrame]:
     Создает подвыборку студентов факультета систем управления и робототехники (ФСУиР).
     Возвращает количество таких студентов, количество уникальных групп и отфильтрованный датасет.
     """
-    pass
+    fsuir = data[data['факультет'] == 'ФСУиР']
+    num_students = len(fsuir)
+    num_groups = fsuir['группа'].nunique()
+    return num_students, num_groups, fsuir
 
 
 # Задача 2
@@ -23,7 +26,12 @@ def find_homonymous_students(df: pd.DataFrame) -> Tuple[bool, int, pd.Series, st
      - серию с числом однофамильцев по курсам
      - группу с максимальным числом однофамильцев
     """
-    pass
+    namesakes = df[df.duplicated('surname', keep=False)]
+    has_homonyms = not namesakes.empty
+    total_homonyms = len(namesakes)
+    homonyms_per_course = namesakes['курс'].value_counts() if has_homonyms else pd.Series(dtype=int)
+    max_homonym_group = namesakes.groupby('группа')['surname'].count().idxmax() if has_homonyms else ""
+    return has_homonyms, total_homonyms, homonyms_per_course, max_homonym_group
     
 
 # Задача 3
@@ -31,7 +39,13 @@ def gender_identification(patronym: str) -> str:
     """
     Определяет пол по отчеству. Возвращает пол: female/male/unknown.
     """
-    pass
+    if pd.isna(patronym):
+        return 'unknown'
+    if str(patronym).endswith(('ович', 'евич', 'ич')):
+        return 'male'
+    if str(patronym).endswith(('овна', 'евна', 'ична', 'инична')):
+        return 'female'
+    return 'unknown'
 
 
 def analyze_patronyms(df: pd.DataFrame) -> Tuple[int, pd.Series]:
@@ -41,7 +55,10 @@ def analyze_patronyms(df: pd.DataFrame) -> Tuple[int, pd.Series]:
      - количество студентов без отчества
      - серию с распределением студентов по полу 
     """
-    pass
+    students_without_patronym = df['patronim'].isna().sum()
+    genders = df['patronim'].apply(gender_identification)
+    gender_counts = genders[genders != 'unknown'].value_counts()
+    return students_without_patronym, gender_counts
 
 
 # Задача 4
@@ -50,7 +67,11 @@ def faculty_statistics(data: pd.DataFrame) -> Tuple[pd.DataFrame, Tuple[str, int
     Подсчитывает количество студентов на каждом факультете,
     а также определяет факультеты с максимальным и минимальным числом студентов.
     """
-    pass
+    faculty_counts_df = data['факультет'].value_counts().reset_index()
+    faculty_counts_df.columns = ['факультет', 'количество']
+    max_faculty = (faculty_counts_df.iloc[0]['факультет'], int(faculty_counts_df.iloc[0]['количество']))
+    min_faculty = (faculty_counts_df.iloc[-1]['факультет'], int(faculty_counts_df.iloc[-1]['количество']))
+    return faculty_counts_df, max_faculty, min_faculty
 
 
 # Задача 5
@@ -59,7 +80,10 @@ def course_statistics(data: pd.DataFrame) -> Tuple[pd.Series, pd.Series]:
     Вычисляет среднее и медианное число студентов на каждом курсе.
     Возвращает две серии с результатами: сначала средние, потом медиана.
     """
-    pass
+    group_sizes = data.groupby(['курс', 'группа']).size().reset_index(name='size')
+    mean_students = group_sizes.groupby('курс')['size'].mean()
+    median_students = group_sizes.groupby('курс')['size'].median()
+    return mean_students, median_students
 
 
 # Задача 6
@@ -73,7 +97,14 @@ def most_popular_name(data: pd.DataFrame) -> Tuple[str, str, str, int, float]:
      3. факультет
      4. доля
     """
-    pass
+    popular_name = data['name'].value_counts().idxmax()
+    name_df = data[data['name'] == popular_name]
+    name_group = name_df.groupby('группа').size().idxmax()
+    group_info = name_df[name_df['группа'] == name_group].iloc[0]
+    faculty = group_info['факультет']
+    course = int(group_info['курс'])
+    name_ratio = round(len(name_df) / len(data), 2)
+    return popular_name, name_group, faculty, course, name_ratio
 
 
 # Задача 7
@@ -81,7 +112,9 @@ def find_students_with_name_starting_P(data: pd.DataFrame) -> pd.DataFrame:
     """
     Находит студентов, чье имя встречается ровно один раз и начинается на "П". Выводит их ФИО, факультет и курс.
     """
-    pass
+    name_counts = data['name'].value_counts()
+    unique_p_names = name_counts[(name_counts == 1) & (name_counts.index.str.startswith('П'))].index
+    return data[data['name'].isin(unique_p_names)][['фио', 'факультет', 'курс']]
 
 
 # Задача 8
@@ -91,7 +124,14 @@ def highest_avg_grade_faculty(data: pd.DataFrame) -> Tuple[str, str, int]:
     Определяет пол, средний балл котого выше.
     Сначала возвращает факультет, затем пол, затем балл.
     """
-    pass
+    course3 = data[data['курс'] == 3].copy()
+    best_fac = course3.groupby('факультет')['средний_балл'].mean().idxmax()
+    best_fac_df = course3[course3['факультет'] == best_fac].copy()
+    best_fac_df['gender'] = best_fac_df['patronim'].apply(gender_identification)
+    gender_scores = best_fac_df[best_fac_df['gender'] != 'unknown'].groupby('gender')['средний_балл'].mean()
+    best_gender = gender_scores.idxmax()
+    best_grade = int(round(gender_scores.max()))
+    return best_fac, best_gender, best_grade
 
 
 # Задача 9
@@ -100,14 +140,17 @@ def find_consecutive_students(data: pd.DataFrame) -> pd.DataFrame:
     Находит первых 5 студентов, которым номера были присвоены подряд.
     Выводит их ФИО, факультет, курс и номер группы.
     """
-    pass
+    df_sorted = data.sort_values('ису').reset_index(drop=True)
+    df_sorted['seq_group'] = df_sorted['ису'] - df_sorted.index
+    target_group = df_sorted['seq_group'].value_counts().loc[lambda x: x >= 5].index[0]
+    return df_sorted[df_sorted['seq_group'] == target_group].head(5)[['фио', 'факультет', 'курс', 'группа']]
 
 
 if __name__ == "__main__":
     data = pd.read_csv("isu_fake_data.csv")
-    # data["surname"] = "put your code here"
-    # data["name"] = "put your code here"
-    # data["patronim"] = "put your code here"
+    data["surname"] = data['фио'].str.split().str[0]
+    data["name"] = data['фио'].str.split().str[1]
+    data["patronim"] = data['фио'].str.split().str[2]
     
     # Задача 1
     num_students, num_groups, fsuir = filter_fsuir_students(data)
