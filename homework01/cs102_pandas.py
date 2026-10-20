@@ -2,6 +2,81 @@ import pandas as pd
 import re
 from typing import Tuple
 
+import pandas as pd
+df=pd.read_csv('isu_fake_data.csv')
+suir = df[df['факультет']=='факультет систем управления и робототехники'].copy()
+#зад1
+print(len(suir), suir['группа'].nunique())
+#зад3
+otchg=suir['фио'].str.endswith(('овна','евна','ична','инична')).sum()
+otchb=suir['фио'].str.endswith(('ович','евич','ич')).sum()
+bezotch= len(suir)-otchg-otchb
+print(otchg, otchb, bezotch)
+
+#зад2
+suir['фамилия']=suir['фио'].str.split().str[0]
+fam=suir['фамилия'].value_counts()
+odfam= fam[fam>1]
+print( "число однофамильцев:", odfam.sum())
+odfamtab=suir[suir['фамилия'].isin(odfam.index)]
+print(odfamtab.groupby('курс').size())
+print(odfamtab.groupby('группа').size())
+bygroup=odfamtab.groupby('группа').size()
+print("больше всего в группе", bygroup.idxmax())
+
+#зад4
+byfac=df.groupby('факультет').size()
+print(byfac)
+print("больше всего на", byfac.idxmax())
+print("меньше всего на", byfac.idxmin())
+
+#зад5
+bycours=df.groupby('курс').size()
+print("среднее число студентов на курсе:", round(bycours.mean()))
+print("медианное число студентов на курсе:", round(bycours.median()))
+
+#зад6
+df['имя']=df['фио'].str.split().str[1]
+imena=df['имя'].value_counts()
+topname= imena.index[0]
+topcount= imena.iloc[0]
+doly=(topcount / len(df))
+dolya= round(doly,2)
+grname=df[df['имя']==topname]
+grcoun=grname.groupby(['факультет','курс','группа']).size()
+grcouninf=grcoun.idxmax()
+fac, cours, gr= grcouninf
+print(f"Самое популярное имя: {topname}")
+print(f"Всего студентов с таким именем: {topcount}")
+print(f"Доля от общего числа: {dolya}%")
+print(f"Больше всего таких студентов в группе: {gr}")
+print(f"Факультет: {fac}, Курс: {cours} ")
+
+#зад7
+pnames=imena[(imena==1) & (imena.index.str.startswith('П'))].index
+pstudents=df[df['имя'].isin(pnames)]
+print(pstudents[['фио', 'факультет', 'курс']])
+
+#зад8
+kurs3=df[df['курс']=='3-й']
+facballs=kurs3.groupby('факультет')['средний_балл'].mean()
+bestfac=facballs.idxmax()
+bestfacdf=kurs3[kurs3['факультет']==bestfac].copy()
+bestfacdf['пол'] = bestfacdf['фио'].str.split().str[-1].str.endswith('а').map({True: 'девушки', False: 'парни'})
+genderballs=bestfacdf.groupby('пол')['средний_балл'].mean()
+bestgender=genderballs.idxmax()
+bestball=round(genderballs.max())
+print(bestgender, bestball)
+
+#зад9
+dfsorted=df.sort_values('ису').copy()
+dfsorted['diff']=dfsorted['ису'].diff()
+dfsorted['chain']= (dfsorted['diff']!=1).cumsum()
+chainsizes=dfsorted.groupby('chain').size()
+targetchain=chainsizes[chainsizes>=5].index[0]
+first5=dfsorted[dfsorted['chain']==targetchain].head(5)
+print(first5[['фио', 'факультет', 'курс', 'группа']])
+
 
 # Задача 1
 def filter_fsuir_students(data: pd.DataFrame) -> Tuple[int, int, pd.DataFrame]:
