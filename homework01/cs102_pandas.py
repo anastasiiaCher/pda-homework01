@@ -1,154 +1,193 @@
-import pandas as pd
-import re
+"""Лабораторная работа 1. Обработка данных студентов с помощью pandas.
+
+Задание: https://github.com/anastasiiaCher/pda-homework01
+Автор: Мертехин Михаил.
+Поток: ВизМод 3.1.
+Инструкция по сдаче:
+https://docs.google.com/document/d/1YRIsBK4yLrC8wQttdxeaVfz5hsCCvyem00035ew4oFo/edit
+Установка: python -m pip install pandas==2.2.2
+Запуск: python cs102_pandas.py
+
+Положите исходный isu_fake_data.csv рядом с программой. Если файла нет,
+данные читаются из открытого репозитория, поэтому нужен интернет.
+
+Для сдачи этот файл заменяет homework01/cs102_pandas.py в личном форке.
+Название PR: «Лабораторная работа 1 — ВизМод 3.1 — Мертехин Михаил».
+"""
+
+from pathlib import Path
 from typing import Tuple
 
+import pandas as pd
 
-# Задача 1
+
+def load_data() -> pd.DataFrame:
+    path = Path(__file__).with_name("isu_fake_data.csv")
+    if not path.exists():
+        path = (
+            "https://raw.githubusercontent.com/anastasiiaCher/pda-homework01/"
+            "602e875160b743cb1dedc19c26d5c871d0b9f07c/homework01/isu_fake_data.csv"
+        )
+    data = pd.read_csv(path)
+    fio_parts = data["фио"].str.split()
+    data["surname"] = fio_parts.str[0]
+    data["name"] = fio_parts.str[1]
+    data["patronim"] = fio_parts.str[2].fillna("")
+    return data
+
+
+# Задача 1. Студенты и группы ФСУиР.
 def filter_fsuir_students(data: pd.DataFrame) -> Tuple[int, int, pd.DataFrame]:
-    """
-    Создает подвыборку студентов факультета систем управления и робототехники (ФСУиР).
-    Возвращает количество таких студентов, количество уникальных групп и отфильтрованный датасет.
-    """
-    pass
+    fsuir = data[
+        data["факультет"] == "факультет систем управления и робототехники"
+    ].copy()
+    return len(fsuir), fsuir["группа"].nunique(), fsuir
 
 
-# Задача 2
+# Задача 2. Однофамильцы на ФСУиР.
 def find_homonymous_students(df: pd.DataFrame) -> Tuple[bool, int, pd.Series, str]:
-    """
-    Проверяет наличие однофамильцев на ФСУиР, их количество, распределение по курсам
-    и определяет группу с наибольшим числом однофамильцев.
-    Возвращает:
-     - логическое значение (наличие однофамильцев)
-     - общее количество однофамильцев
-     - серию с числом однофамильцев по курсам
-     - группу с максимальным числом однофамильцев
-    """
-    pass
-    
+    homonyms = df[df["surname"].duplicated(keep=False)]
+    per_course = homonyms.groupby("курс").size()
+    max_group = homonyms["группа"].value_counts().idxmax() if not homonyms.empty else ""
+    return not homonyms.empty, len(homonyms), per_course, max_group
 
-# Задача 3
+
+# Задача 3. Пол по окончаниям отчества.
 def gender_identification(patronym: str) -> str:
-    """
-    Определяет пол по отчеству. Возвращает пол: female/male/unknown.
-    """
-    pass
+    if not isinstance(patronym, str):
+        return "unknown"
+    patronym = patronym.strip().lower()
+    if patronym.endswith(("овна", "евна", "ична", "инична")):
+        return "female"
+    if patronym.endswith(("ович", "евич", "ич")):
+        return "male"
+    return "unknown"
 
 
 def analyze_patronyms(df: pd.DataFrame) -> Tuple[int, pd.Series]:
-    """
-    Определяет количество студентов без отчества и распределение студентов по полу на основе отчества.
-    Возвращает:
-     - количество студентов без отчества
-     - серию с распределением студентов по полу 
-    """
-    pass
+    without_patronym = df["patronim"].eq("")
+    genders = df.loc[~without_patronym, "patronim"].apply(gender_identification)
+    gender_counts = genders.value_counts().reindex(
+        ["male", "female", "unknown"], fill_value=0
+    )
+    return int(without_patronym.sum()), gender_counts
 
 
-# Задача 4
-def faculty_statistics(data: pd.DataFrame) -> Tuple[pd.DataFrame, Tuple[str, int], Tuple[str, int]]:
-    """
-    Подсчитывает количество студентов на каждом факультете,
-    а также определяет факультеты с максимальным и минимальным числом студентов.
-    """
-    pass
+# Задача 4. Численность факультетов.
+def faculty_statistics(
+    data: pd.DataFrame,
+) -> Tuple[pd.DataFrame, Tuple[str, int], Tuple[str, int]]:
+    counts = data["факультет"].value_counts()
+    table = counts.rename_axis("факультет").reset_index(name="число_студентов")
+    max_faculty = (counts.idxmax(), int(counts.max()))
+    min_faculty = (counts.idxmin(), int(counts.min()))
+    return table, max_faculty, min_faculty
 
 
-# Задача 5
+# Задача 5. Средняя и медианная численность курса по факультетам.
 def course_statistics(data: pd.DataFrame) -> Tuple[pd.Series, pd.Series]:
-    """
-    Вычисляет среднее и медианное число студентов на каждом курсе.
-    Возвращает две серии с результатами: сначала средние, потом медиана.
-    """
-    pass
+    counts = data.groupby(["факультет", "курс"]).size()
+    per_course = counts.groupby("курс")
+    return per_course.mean(), per_course.median()
 
 
-# Задача 6
-def most_popular_name(data: pd.DataFrame) -> Tuple[str, str, str, int, float]:
-    """
-    Определяет самое популярное имя, группу с наибольшим количеством студентов с этим именем,
-    факультет, курс и долю таких студентов в общем числе.
-    Возвращает результат в следующем порядке:
-     1. самое частое имя
-     2. группа
-     3. факультет
-     4. доля
-    """
-    pass
+# Задача 6. Популярное имя и его доля во всём датасете.
+def most_popular_name(data: pd.DataFrame) -> Tuple[str, str, str, str, float]:
+    popular_name = data["name"].value_counts().idxmax()
+    students = data[data["name"] == popular_name]
+    group = students["группа"].value_counts().idxmax()
+    group_info = students[students["группа"] == group].iloc[0]
+    ratio = round(len(students) / len(data), 2)
+    return popular_name, group, group_info["факультет"], group_info["курс"], ratio
 
 
-# Задача 7
+# Задача 7. Имена на П, встретившиеся ровно один раз.
 def find_students_with_name_starting_P(data: pd.DataFrame) -> pd.DataFrame:
-    """
-    Находит студентов, чье имя встречается ровно один раз и начинается на "П". Выводит их ФИО, факультет и курс.
-    """
-    pass
+    name_counts = data["name"].value_counts()
+    mask = data["name"].str.startswith("П") & data["name"].map(name_counts).eq(1)
+    return data.loc[mask, ["фио", "факультет", "курс"]].copy()
 
 
-# Задача 8
+# Задача 8. Лучший средний балл третьего курса.
 def highest_avg_grade_faculty(data: pd.DataFrame) -> Tuple[str, str, int]:
-    """
-    Находит факультет, на котором средний балл студентов третьего курса самый высокий.
-    Определяет пол, средний балл котого выше.
-    Сначала возвращает факультет, затем пол, затем балл.
-    """
-    pass
+    third_course = data[data["курс"] == "3-й"]
+    faculty_means = third_course.groupby("факультет")["средний_балл"].mean()
+    faculty = faculty_means.idxmax()
+    students = third_course[third_course["факультет"] == faculty].copy()
+    students["gender"] = students["patronim"].apply(gender_identification)
+    known_gender = students[students["gender"].isin(["female", "male"])]
+    gender_means = known_gender.groupby("gender")["средний_балл"].mean()
+    best_gender = gender_means.idxmax()
+    return faculty, best_gender, int(round(gender_means.loc[best_gender]))
 
 
-# Задача 9
+# Задача 9. Первая по возрастанию цепочка из пяти номеров подряд.
 def find_consecutive_students(data: pd.DataFrame) -> pd.DataFrame:
-    """
-    Находит первых 5 студентов, которым номера были присвоены подряд.
-    Выводит их ФИО, факультет, курс и номер группы.
-    """
-    pass
+    students = data.sort_values("ису").drop_duplicates("ису").copy()
+    sequence = students["ису"].diff().ne(1).cumsum()
+    sequence_lengths = students.groupby(sequence)["ису"].transform("size")
+    columns = ["ису", "фио", "факультет", "курс", "группа"]
+    return students.loc[sequence_lengths >= 5, columns].head(5).copy()
+
+
+def main() -> None:
+    data = load_data()
+    print(f"Всего записей: {len(data)}, факультетов: {data['факультет'].nunique()}")
+
+    print("\nЗадача 1. ФСУиР")
+    num_students, num_groups, fsuir = filter_fsuir_students(data)
+    print(f"Студентов: {num_students}, групп: {num_groups}")
+
+    print("\nЗадача 2. Однофамильцы")
+    has_homonyms, total, per_course, group = find_homonymous_students(fsuir)
+    print(f"Есть однофамильцы: {has_homonyms}, всего студентов: {total}")
+    print(per_course.to_string())
+    print(f"Группа с максимумом: {group}")
+
+    print("\nЗадача 3. Отчества")
+    without_patronym, gender_counts = analyze_patronyms(fsuir)
+    print(f"Без третьего слова в ФИО: {without_patronym}")
+    print("Среди записей с третьим словом:")
+    print(gender_counts.to_string())
+    print("male — парни, female — девушки, unknown — пол не определён по отчеству")
+
+    print("\nЗадача 4. Численность факультетов")
+    faculty_counts, max_faculty, min_faculty = faculty_statistics(data)
+    print(faculty_counts.to_string(index=False))
+    print(f"Больше всего: {max_faculty[0]} — {max_faculty[1]}")
+    print(f"Меньше всего: {min_faculty[0]} — {min_faculty[1]}")
+
+    print("\nЗадача 5. Численность курсов по факультетам")
+    mean_students, median_students = course_statistics(data)
+    statistics = pd.DataFrame(
+        {"среднее": mean_students, "медиана": median_students}
+    )
+    print(statistics.to_string())
+
+    print("\nЗадача 6. Самое популярное имя")
+    name, group, faculty, course, ratio = most_popular_name(data)
+    name_count = int(data["name"].eq(name).sum())
+    percent = name_count / len(data) * 100
+    print(f"Имя: {name}, студентов: {name_count}")
+    print(f"Группа: {group}, факультет: {faculty}, курс: {course}")
+    print(f"Доля, округлённая до двух знаков: {ratio:.2f}")
+    print(f"Та же исходная доля в процентах: {percent:.2f}%")
+
+    print("\nЗадача 7. Уникальные имена на П")
+    result_7 = find_students_with_name_starting_P(data)
+    print(result_7.to_string(index=False))
+    print(f"Найдено: {len(result_7)}")
+
+    print("\nЗадача 8. Средний балл третьего курса")
+    faculty, gender, grade = highest_avg_grade_faculty(data)
+    print(f"Факультет: {faculty}")
+    print(f"Пол с более высоким средним баллом: {gender}, средний балл: {grade}")
+
+    print("\nЗадача 9. Пять студентов с последовательными номерами")
+    result_9 = find_consecutive_students(data)
+    print(result_9[["фио", "факультет", "курс", "группа"]].to_string(index=False))
+    print("Номера ИСУ для проверки:", result_9["ису"].tolist())
 
 
 if __name__ == "__main__":
-    data = pd.read_csv("isu_fake_data.csv")
-    # data["surname"] = "put your code here"
-    # data["name"] = "put your code here"
-    # data["patronim"] = "put your code here"
-    
-    # Задача 1
-    num_students, num_groups, fsuir = filter_fsuir_students(data)
-    print(f"Студентов на ФСУиР: {num_students}, Групп: {num_groups}")
-    
-    # Задача 2
-    has_homonyms, total_homonyms, homonyms_per_course, max_homonym_group = find_homonymous_students(fsuir)
-    print(f"Есть однофамильцы: {has_homonyms}, Всего: {total_homonyms}, Группа с максимумом: {max_homonym_group}")
-    print(f"На каждом курсе: {homonyms_per_course}")
-    
-    # Задача 3
-    students_without_patronym, gender_counts = analyze_patronyms(fsuir)
-    print(f"Студентов без отчества: {students_without_patronym}")
-    print("Распределение по полу:", gender_counts)
-    
-    # Задача 4
-    faculty_counts, max_faculty, min_faculty = faculty_statistics(data)
-    print(f"Факультет с наибольшим числом студентов: {max_faculty}")
-    print(f"Факультет с наименьшим числом студентов: {min_faculty}")
-    
-    # Задача 5
-    mean_students, median_students = course_statistics(data)
-    print("Среднее число студентов на курсах:", mean_students)
-    print("Медианное число студентов на курсах:", median_students)
-    
-    # Задача 6
-    popular_name, name_group, faculty, course, name_ratio = most_popular_name(data)
-    print(f"Самое популярное имя: {popular_name}, Группа: {name_group}, Факультет: {faculty}, Курс: {course}")
-    print(f"Доля студентов с этим именем: {name_ratio}")
-    
-    # Задача 7
-    result_7 = find_students_with_name_starting_P(data)
-    print("Студенты с именем, начинающимся на П и встречающимся ровно один раз:")
-    print(result_7)
-    
-    # Задача 8
-    fac, best_gender, best_grade = highest_avg_grade_faculty(data)
-    print(f"Факультет с высоким средним баллом 3-го курса: {fac}")
-    print(f"Пол с наивысшим средним баллом: {best_gender}, Средний балл: {best_grade}")
-    
-    # Задача 9
-    result_9 = find_consecutive_students(data)
-    print("Первые 5 студентов с подряд идущими табельными номерами:")
-    print(result_9)
+    main()
