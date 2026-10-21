@@ -125,7 +125,7 @@ def most_popular_name(
     # Получаем факультет и курс этой группы
     group_row = named_students[named_students["группа"] == name_group].iloc[0]
     faculty = str(group_row["факультет"])
-    course = int(group_row["курс"])
+    course = int(str(group_row["курс"]).split("-")[0])
 
     name_ratio = round(len(named_students) / len(data), 2) if len(data) else 0.0
 
@@ -147,7 +147,7 @@ def find_students_with_name_starting_P(data: pd.DataFrame) -> pd.DataFrame:
 def highest_avg_grade_faculty(
     data: pd.DataFrame
 ) -> Tuple[str, str, int]:
-    third_year = data[data["курс"] == 3].copy()
+    third_year = data[data["курс"].astype(str).str.startswith("3")].copy()
 
     faculty_means = third_year.groupby("факультет")["средний_балл"].mean()
     faculty = faculty_means.idxmax()
