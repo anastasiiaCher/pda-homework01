@@ -4,7 +4,7 @@
 
 ## Открыть работу в Google Colab
 
-[Открыть лабораторную работу №2 в Google Colab](https://colab.research.google.com/drive/19RKf367yhHqRX8v5Z64FUL8ry-fQ4uh_?usp=sharing)
+[Открыть лабораторную работу №2 в Google Colab](https://colab.research.google.com/drive/15vv62fld-8ze3mSkyiNmrnHq917BjAT4)
 
 ## Файл ноутбука
 
