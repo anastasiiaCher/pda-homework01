@@ -5,32 +5,35 @@ from typing import Tuple
 
 # Задача 1
 def filter_fsuir_students(data: pd.DataFrame) -> Tuple[int, int, pd.DataFrame]:
-    """
-    Создает подвыборку студентов факультета систем управления и робототехники (ФСУиР).
-    Возвращает количество таких студентов, количество уникальных групп и отфильтрованный датасет.
-    """
-    pass
+    fsuir = data[data["факультет"] == "факультет систем управления и робототехники"]
+    num_students = len(fsuir)
+    num_groups = fsuir["группа"].nunique()
+    return num_students, num_groups, fsuir
 
 
 # Задача 2
 def find_homonymous_students(df: pd.DataFrame) -> Tuple[bool, int, pd.Series, str]:
-    """
-    Проверяет наличие однофамильцев на ФСУиР, их количество, распределение по курсам
-    и определяет группу с наибольшим числом однофамильцев.
-    Возвращает:
-     - логическое значение (наличие однофамильцев)
-     - общее количество однофамильцев
-     - серию с числом однофамильцев по курсам
-     - группу с максимальным числом однофамильцев
-    """
-    pass
+    surname_counts = df["surname"].value_counts()
+    homonym_surnames = surname_counts[surname_counts > 1].index
+
+    homonyms_df = df[df["surname"].isin(homonym_surnames)]
+
+    has_homonyms = len(homonyms_df) > 0
+    total_homonyms = len(homonyms_df)
+
+    homonyms_per_course = homonyms_df.groupby("курс").size()
+
+    max_homonym_group = (
+        homonyms_df.groupby("группа").size().idxmax()
+        if not homonyms_df.empty else None
+    )
+
+    return has_homonyms, total_homonyms, homonyms_per_course, max_homonym_group
     
 
 # Задача 3
 def gender_identification(patronym: str) -> str:
-    """
-    Определяет пол по отчеству. Возвращает пол: female/male/unknown.
-    """
+    
     pass
 
 
@@ -105,9 +108,17 @@ def find_consecutive_students(data: pd.DataFrame) -> pd.DataFrame:
 
 if __name__ == "__main__":
     data = pd.read_csv("isu_fake_data.csv")
-    # data["surname"] = "put your code here"
-    # data["name"] = "put your code here"
-    # data["patronim"] = "put your code here"
+
+    def split_fio(fio: str):
+    if pd.isna(fio):
+        return pd.Series([None, None, None])
+    parts = fio.strip().split()
+    surname = parts[0] if len(parts) > 0 else None
+    name = parts[1] if len(parts) > 1 else None
+    patronym = " ".join(parts[2:]) if len(parts) > 2 else None
+    return pd.Series([surname, name, patronym])
+
+    data[["surname", "name", "patronim"]] = data["фио"].apply(split_fio)
     
     # Задача 1
     num_students, num_groups, fsuir = filter_fsuir_students(data)
