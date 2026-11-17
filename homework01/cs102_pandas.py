@@ -47,7 +47,7 @@ def filter_fsuir_students(data: pd.DataFrame) -> Tuple[int, int, pd.DataFrame]:
 # Задача 2. Однофамильцы на ФСУиР.
 def find_homonymous_students(df: pd.DataFrame) -> Tuple[bool, int, pd.Series, str]:
     homonyms = df[df["surname"].duplicated(keep=False)]
-    per_course = homonyms.groupby("курс").size()
+    same_course = df.duplicated(["курс", "surname"], keep=False)     per_course = df[same_course].groupby("курс").size()
     max_group = homonyms["группа"].value_counts().idxmax() if not homonyms.empty else ""
     return not homonyms.empty, len(homonyms), per_course, max_group
 
